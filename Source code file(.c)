@@ -1,0 +1,132 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct {
+    int rollNo;
+    char name[50];
+    float marks[3];
+    float total;
+} Student;
+
+// Function Prototypes
+void addRecord();
+void displayAll();
+void generateRankList();
+
+const char *FILENAME = "students.dat";
+
+int main() {
+    int choice;
+
+    while (1) {
+        printf("\n--- Student Management System ---");
+        printf("\n1. Add Student Record");
+        printf("\n2. Display All Records");
+        printf("\n3. Generate Rank List");
+        printf("\n4. Exit");
+        printf("\nEnter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: addRecord(); break;
+            case 2: displayAll(); break;
+            case 3: generateRankList(); break;
+            case 4: exit(0);
+            default: printf("\nInvalid choice! Please try again.");
+        }
+    }
+    return 0;
+}
+
+void addRecord() {
+    FILE *fp = fopen(FILENAME, "ab+");
+    if (fp == NULL) {
+        printf("Error opening file!");
+        return;
+    }
+
+    Student s;
+    s.total = 0;
+
+    printf("\nEnter Roll Number: ");
+    scanf("%d", &s.rollNo);
+    printf("Enter Name: ");
+    getchar(); // Clear buffer
+    fgets(s.name, 50, stdin);
+    s.name[strcspn(s.name, "\n")] = 0; // Remove newline
+
+    for (int i = 0; i < 3; i++) {
+        printf("Enter marks for Subject %d: ", i + 1);
+        scanf("%f", &s.marks[i]);
+        s.total += s.marks[i];
+    }
+
+    fwrite(&s, sizeof(Student), 1, fp);
+    fclose(fp);
+    printf("\nRecord added successfully!");
+}
+
+void displayAll() {
+    FILE *fp = fopen(FILENAME, "rb");
+    if (fp == NULL) {
+        printf("\nNo records found.");
+        return;
+    }
+
+    Student s;
+    printf("\n%-10s %-20s %-10s", "Roll No", "Name", "Total Marks");
+    printf("\n--------------------------------------------");
+
+    while (fread(&s, sizeof(Student), 1, fp)) {
+        printf("\n%-10d %-20s %-10.2f", s.rollNo, s.name, s.total);
+    }
+
+    fclose(fp);
+}
+
+void generateRankList() {
+    FILE *fp = fopen(FILENAME, "rb");
+    if (fp == NULL) {
+        printf("\nNo records found.");
+        return;
+    }
+
+    // Determine number of records
+    fseek(fp, 0, SEEK_END);
+    int count = ftell(fp) / sizeof(Student);
+    rewind(fp);
+
+    if (count == 0) {
+        printf("\nNo records to rank.");
+        fclose(fp);
+        return;
+    }
+
+    // Read all records into an array for sorting
+    Student *list = (Student *)malloc(count * sizeof(Student));
+    for (int i = 0; i < count; i++) {
+        fread(&list[i], sizeof(Student), 1, fp);
+    }
+    fclose(fp);
+
+    // Simple Bubble Sort based on Total Marks (Descending)
+    for (int i = 0; i < count - 1; i++) {
+        for (int j = 0; j < count - i - 1; j++) {
+            if (list[j].total < list[j + 1].total) {
+                Student temp = list[j];
+                list[j] = list[j + 1];
+                list[j + 1] = temp;
+            }
+        }
+    }
+
+    // Display Rank List
+    printf("\n--- RANK LIST ---");
+    printf("\n%-5s %-10s %-20s %-10s", "Rank", "Roll No", "Name", "Total");
+    for (int i = 0; i < count; i++) {
+        printf("\n%-5d %-10d %-20s %-10.2f", i + 1, list[i].rollNo, list[i].name, list[i].total);
+    }
+
+    free(list);
+}
